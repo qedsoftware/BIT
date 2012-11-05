@@ -6,6 +6,7 @@
 #include <sys/stat.h>	
 
 #define byte unsigned char
+#define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 
 void bin_prnt_byte(int x, int nibble_spacing);
 int get_file_size(const char *fpath);
@@ -24,18 +25,20 @@ main(int argc, char** argv)
 	/* COMMAND-LINE PARAMETERS 
 	-i [filename]		input file to dump bits from
 	-n [integer]		number of bits to read out
+	-t [integer]		byte offset to start read out from
 	-x 					print hex values
 	-s 					print as one long string (use with caution)
 	-h 					help
 	*/
 	int g;
-	int iflag=0, nflag=0, bflag=0, xflag=0, dflag=0, sflag=0;
+	int iflag=0, nflag=0, bflag=0, xflag=0, dflag=0, sflag=0, tflag=0, vflag=0;
 	int nibble_spacing=1;
 	int size;
-	int max_bytes;
+	int n_bytes;
+	int init_offset=0;
 	FILE *sfp;
 	char *input_filename = NULL;
-	while ((g = getopt(argc,argv,"i:n:bxdsh")) != -1) {
+	while ((g = getopt(argc,argv,"i:n:t:bxdshv")) != -1) {
 		switch(g) {
 			case 'i': {
 				iflag=1;
@@ -48,7 +51,12 @@ main(int argc, char** argv)
 			}
 			case 'n': {
 				nflag=1;
-				max_bytes = atoi(optarg);
+				n_bytes = atoi(optarg);
+				break;				
+			}
+			case 't': {
+				tflag=1;
+				init_offset = atoi(optarg);
 				break;				
 			}
 			case 'b': {
@@ -66,6 +74,10 @@ main(int argc, char** argv)
 			case 's': {
 				sflag=1;				
 				nibble_spacing=0;
+				break;
+			}
+			case 'v': {
+				vflag=1;
 				break;
 			}
 			case 'h': {
@@ -93,19 +105,26 @@ main(int argc, char** argv)
 		bflag = 1;
 	}
 	if (bflag + xflag + dflag > 1) {
-		printf("Please specify only one of the following three options: -b (binary), -x (hex), and -d (decimal). The default output is binary.");
+		printf("Please specify only one of the following three options: -b (binary), -x (hex), and -d (decimal). The default output is binary.\n");
 		return 1;
 	}
-	size = get_file_size(input_filename);			// input file's size in bytes
+	size = get_file_size(input_filename); // input file's size in bytes
 	if (nflag) {
-		if (max_bytes > size) 
+		if (n_bytes > size) 
 			printf("Number of bytes requested is greater than the input file's size of %d bytes. Defaulting to %d.\n",size,size);
-		if (max_bytes < 0)
+		if (n_bytes < 0)
 			printf("Number of bytes requested is negative. Defaulting to input file's size of %d bytes.\n",size);
 	}	
 
+	/* MOVE OFFSET */
+	if (0 != fseek(sfp,init_offset,SEEK_SET)) {
+		printf("ERROR: Could not seek to position %d.",init_offset);
+		exit(1);
+	}
+
 	/* BINARY DUMP */
-	int byte_index_of_last_line = 16*(((nflag)?max_bytes:size)/16);
+	int byte_index_of_last_line = 16*(((nflag)?min(size-init_offset,n_bytes):(size-init_offset))/16);
+	printf("byte index of last line: %d\n",byte_index_of_last_line);
 	byte c;
 	int byte_count = 0;
 	if (sflag) {	// print as one long string
@@ -119,18 +138,31 @@ main(int argc, char** argv)
 				else 
 					bin_prnt_byte(c,nibble_spacing);
 			}
-			if (nflag && byte_count == max_bytes) break;		// quit if we reach the byte quota
-	    }					// end main loop
-	} else {		// print with hexedit style formatting: one space between nibbles, tab between bytes, and newlines
-		int i = 0;	
-	    while(!feof(sfp)) {	// begin main loop
+			if (nflag && byte_count == n_bytes) break;		// quit if we reach the byte quota
+	    } // end main loop
+	} else { // print with hexedit style formatting: one space between nibbles, tab between bytes, and newlines
+		int i = 0;
+		while(!feof(sfp)) {	// begin main loop
 			putchar(' ');
 			if (i % 16 == 0) {
-				if (i < byte_index_of_last_line) {
-					printf("\nbytes %5d to %5d:\t",i,i+15);
-				} else if ( (nflag?max_bytes:size) % 16) {
-					printf("\nbytes %5d to %5d:\t",i,(nflag)?(max_bytes-1):(size-1));
-				}				
+				
+				if (vflag) {
+					if (i < byte_index_of_last_line) {
+						printf("\nbytes %5d (%5d) to %5d (%5d):\t",i+init_offset,i,i+15+init_offset,i+15);
+					} else if ( (nflag?n_bytes:size) % 16) {
+						printf("\nbytes %5d (%5d) to %5d (%5d):\t",i+init_offset,i,
+							(nflag)?( min(n_bytes-1+init_offset,size-1) ):(size-1),
+							(nflag)?( min(n_bytes-1,size-1-init_offset) ):(size-1-init_offset)
+						);
+					}					
+				} else {
+					if (i < byte_index_of_last_line) {
+						printf("\nbytes %5d to %5d:\t",i+init_offset,i+15+init_offset);
+					} else if ( (nflag?n_bytes:size) % 16) {
+						printf("\nbytes %5d to %5d:\t",i+init_offset,(nflag)?( min(n_bytes-1+init_offset,size-1) ):(size-1));
+					}
+				}
+				
 			}
 			if (i % 2 == 0)
 				putchar('\t');
@@ -141,11 +173,11 @@ main(int argc, char** argv)
 				if (dflag) 
 					printf("%d",c);
 				else if (xflag)
-					printf("%02x",c); 				
+					printf("%02x",c);
 				else 
 					bin_prnt_byte(c,nibble_spacing);
 			}
-			if (nflag && byte_count == max_bytes) break;		// quit if we reach the byte quota
+			if (nflag && byte_count == n_bytes) break;		// quit if we reach the byte quota
 			i++;			
 	    }					// end main loop
 	}
@@ -186,6 +218,7 @@ usage(void) {
 	printf("Dumps bits from a file to the screen (stdout).\n");
     printf("\t./dump_bits -i [input_filename] -n [number_of_bytes]\n");
 	printf("Optional:\n");
+	printf("\t-t [byte_offset]	starts read out from a specific byte offset\n");
     printf("\t-b	prints binary values (default)\n");
     printf("\t-x	prints hex values\n");
     printf("\t-d	prints decimal values\n");
@@ -193,5 +226,3 @@ usage(void) {
     printf("\t-h	prints as one long string\n");
 	printf("\t\tIf number of bits is not specified, dumps whole file.\n");	
 }
-
-
