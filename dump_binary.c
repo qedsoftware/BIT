@@ -124,7 +124,6 @@ main(int argc, char** argv)
 
 	/* BINARY DUMP */
 	int byte_index_of_last_line = 16*(((nflag)?min(size-init_offset,n_bytes):(size-init_offset))/16);
-	printf("byte index of last line: %d\n",byte_index_of_last_line);
 	byte c;
 	int byte_count = 0;
 	if (sflag) {	// print as one long string
@@ -138,7 +137,7 @@ main(int argc, char** argv)
 				else 
 					bin_prnt_byte(c,nibble_spacing);
 			}
-			if (nflag && byte_count == n_bytes) break;		// quit if we reach the byte quota
+			if ((nflag && byte_count == min(n_bytes,size)) || byte_count == size) break; // quit if we reach the byte quota
 	    } // end main loop
 	} else { // print with hexedit style formatting: one space between nibbles, tab between bytes, and newlines
 		int i = 0;
