@@ -1,5 +1,5 @@
-/* Dumps files to screen as binary, either in bits or bytes. */
-/* William D. Wu, 1/19/2011 */
+/* Dumps contents of a file to the screen at the binary level. */
+/* William Wu (william.wu@themathpath.com), 1/19/2011 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>		// getopt()
@@ -10,26 +10,34 @@
 
 void bin_prnt_byte(int x, int nibble_spacing);
 int get_file_size(const char *fpath);
-void usage(void);
 
+void
+usage(void) 
+{
+	printf("Usage:\n");
+	printf("\tDumps bits from a file to the screen (stdout).\n");
+	printf("\t./bit -i [input_filename] -n [number_of_bytes]\n");
+	printf("Optional:\n");
+	printf("\t-t [byte_offset]	starts read out from a specific byte offset\n");
+	printf("\t-b	prints binary values (default)\n");
+	printf("\t-x	prints hex values\n");
+	printf("\t-d	prints decimal values\n");
+	printf("\t-s	prints as one long string\n");
+	printf("\t-v	verbose mode\n");
+	printf("\t-h	help menu\n");
+	printf("\t\tIf number of bits is not specified, dumps whole file.\n");
+}
 
-unsigned long int Endian_DWord_Conversion(unsigned long int dword)
+unsigned long int 
+Endian_DWord_Conversion(unsigned long int dword)
 {
 	return ((dword>>24)&0x000000FF) | ((dword>>8)&0x0000FF00) | ((dword<<8)&0x00FF0000) | ((dword<<24)&0xFF000000);
 }
 
-int
+int 
 main(int argc, char** argv)
 {
-
-	/* COMMAND-LINE PARAMETERS
-	-i [filename]		input file to dump bits from
-	-n [integer]		number of bits to read out
-	-t [integer]		byte offset to start read out from
-	-x 					print hex values
-	-s 					print as one long string (use with caution)
-	-h 					help
-	*/
+	/* COMMAND-LINE PARAMETERS */
 	int g;
 	int iflag=0, nflag=0, bflag=0, xflag=0, dflag=0, sflag=0, tflag=0, vflag=0;
 	int nibble_spacing=1;
@@ -126,7 +134,7 @@ main(int argc, char** argv)
 	int byte_index_of_last_line = 16*(((nflag)?min(size-init_offset,n_bytes):(size-init_offset))/16);
 	byte c;
 	int byte_count = 0;
-	if (sflag) {	// print as one long string
+	if (sflag) { // print as one long string
 		while(!feof(sfp)) {	// begin main loop
 			if (fread(&c, 1, 1, sfp) == 1) {
 				byte_count++;
@@ -176,16 +184,17 @@ main(int argc, char** argv)
 				else
 					bin_prnt_byte(c,nibble_spacing);
 			}
-			if (nflag && byte_count == n_bytes) break;		// quit if we reach the byte quota
+			if (nflag && byte_count == n_bytes) break; // quit if we reach the byte quota
 			i++;
-		}					// end main loop
+		} // end main loop
 	}
 	putchar('\n');
 	fclose(sfp);
 	return 0;
 }
 
-void bin_prnt_byte(int x, int nibble_spacing)
+void 
+bin_prnt_byte(int x, int nibble_spacing)
 {
 	int n;
 	for(n=0; n<8; n++) {
@@ -194,7 +203,7 @@ void bin_prnt_byte(int x, int nibble_spacing)
 		else
 			printf("0");
 		if (nibble_spacing && n==3)
-			printf(" "); /* insert a space between nibbles */
+			printf(" "); /* insert space between nibbles */
 		x = x<<1;
 	}
 }
@@ -209,19 +218,4 @@ get_file_size(const char *fpath)
 	}
 	free(buf);
 	return ret;
-}
-
-void
-usage(void) {
-	printf("Usage:\n");
-	printf("Dumps bits from a file to the screen (stdout).\n");
-	printf("\t./dump_bits -i [input_filename] -n [number_of_bytes]\n");
-	printf("Optional:\n");
-	printf("\t-t [byte_offset]	starts read out from a specific byte offset\n");
-	printf("\t-b	prints binary values (default)\n");
-	printf("\t-x	prints hex values\n");
-	printf("\t-d	prints decimal values\n");
-	printf("\t-s	prints as one long string\n");
-	printf("\t-h	prints as one long string\n");
-	printf("\t\tIf number of bits is not specified, dumps whole file.\n");
 }

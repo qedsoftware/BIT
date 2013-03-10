@@ -7,18 +7,18 @@ CC = gcc
 CFLAGS = -g -Wall -Werror
 
 # name of final program
-OUTPUT = dump_binary
+OUTPUT = bit
 
 # all -- build program and test it
 all: $(OUTPUT) 
 
 # linking -- put object files together into machine-code
-$(OUTPUT): dump_binary.o 
-	$(CC) $(CFLAGS) dump_binary.o -o $(OUTPUT)
+$(OUTPUT): bit.o 
+	$(CC) $(CFLAGS) bit.o -o $(OUTPUT)
 
 # compilation -- create individual assembly-language object files
-dump_binary.o: dump_binary.c 
-	$(CC) $(CFLAGS) -c dump_binary.c
+bit.o: bit.c 
+	$(CC) $(CFLAGS) -c bit.c
 	
 # clean -- remove object files and program	
 clean:
